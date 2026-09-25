@@ -1,0 +1,36 @@
+% VFM configuration summary (single-column, one row per method)
+\begin{table}[t]
+\centering
+\caption{Configurations of the compared foundation models.}
+\label{tab:vfm_config}
+\setlength{\tabcolsep}{1.2pt}
+\footnotesize
+\begin{tabular}{@{}l@{\hspace{12pt}}llll@{}}
+\toprule
+\multicolumn{1}{l}{\textbf{Method}} & \multicolumn{1}{c}{\textbf{Backbone}} & \multicolumn{1}{c}{\textbf{Paradigm}} & \multicolumn{1}{c}{\textbf{Modality}} & \multicolumn{1}{c}{\textbf{Data}} \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{General FMs}} \\
+DINOv3 & ViT & DINO & I & 1.7B images \\
+CLIP & ViT & CTR & I+T & 400M images \\
+VideoMAE2 & ViT & MAE & V & 1.35M videos \\
+VJEPA2 & ViT & JEPA & V & 2M videos \\
+InternVideo2 & ViT & MAE+CTR & V+T & 1.1M videos \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{Surgical FMs}} \\
+EndoSSL & ViT & MSN & I & 23.3M images \\
+SurgeNetXL & CAFormer & DINO & I & 4.7M images \\
+EndoViT & ViT & MAE & I & 744K images \\
+SurgMotion & ViT & JEPA & V & 15M videos \\
+EndoFM & ViT & MAE & V & 33K videos \\
+SurgVISTA & ViT & MAE & V & 3.7K videos \\
+PeskaVLP & ResNet+BERT & CTR & V+T & 1.3K videos \\
+HecVL & ResNet+BERT & CTR & V+T & 1.3K videos \\
+SurgVLP & ResNet+BERT & CTR & V+T & 1.3K videos \\
+\bottomrule
+\end{tabular}
+\vspace{3pt}
+\begin{spacing}{0.95}
+\footnotesize
+I/V/T denotes image/video/text. MAE, DINO, JEPA, and MSN belong to self-supervised learning, while CTR is contrastive learning.
+\end{spacing}
+\end{table}

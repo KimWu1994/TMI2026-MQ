@@ -1,0 +1,38 @@
+% Spatiotemporal Design Ablation --- Single Column
+% Control-variable, 3 progressive regions on DINOv3 ViT-B, 6-shot, Jaccard (J), 1 decimal.
+% Gains vs. region baseline in parentheses. R1 baseline: Frozen DINOv3 (CLS).
+% R2/R3 baseline: Frozen+LoRA+SSTS (best of R1).
+\begin{table}[!ht]
+\centering
+\caption{Spatiotemporal design ablation on 6-shot training.}
+\label{tab:temporal_modeling}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l c c c}
+\toprule
+Method & T & Cataract101 & Cholec80 \\
+\midrule
+\multicolumn{4}{l}{\textbf{R1. Single frame (T=1): spatial design}} \\
+\quad Frozen DINOv3 (CLS)              & 1  & 34.6            & 38.8 \\
+\quad Fine-tuned DINOv3 (full)       & 1  & 55.0 {\scriptsize (+20.4)} & 46.1 {\scriptsize (+7.3)} \\
+\quad Frozen + LoRA (CLS)            & 1  & 55.2 {\scriptsize (+20.6)} & 45.5 {\scriptsize (+6.7)} \\
+\quad Frozen + LoRA + mean-patch     & 1  & 53.0 {\scriptsize (+18.4)} & 45.8 {\scriptsize (+7.0)} \\
+\quad Frozen + LoRA + SSTS (ours)    & 1  & \textbf{57.7 {\scriptsize (+23.1)}} & \textbf{49.6 {\scriptsize (+10.8)}} \\
+\midrule
+\multicolumn{4}{l}{\textbf{R2. Simple temporal fusion}} \\
+\quad Frozen+LoRA+SSTS (T=1)          & 1  & 57.7            & 49.6 \\
+\quad + Mean Pooling   & 4  & 57.8 {\scriptsize (+0.1)}  & 49.8 {\scriptsize (+0.2)} \\
+\quad + Mean Pooling   & 8  & 58.2 {\scriptsize (+0.5)}  & 51.2 {\scriptsize (+1.6)} \\
+\quad + Max Pooling    & 4  & 61.5 {\scriptsize (+3.8)}  & 49.0 {\scriptsize (-0.6)} \\
+\quad + Max Pooling    & 8  & 62.8 {\scriptsize (+5.1)}  & 51.5 {\scriptsize (+1.9)} \\
+\quad + Bi-LSTM        & 4  & 60.2 {\scriptsize (+2.5)}  & 52.0 {\scriptsize (+2.4)} \\
+\quad + Bi-LSTM        & 8  & \textbf{65.0 {\scriptsize (+7.3)}}  & \textbf{53.5 {\scriptsize (+3.9)}} \\
+\midrule
+\multicolumn{4}{l}{\textbf{R3. Spatiotemporal fusion (ours)}} \\
+\quad Frozen+LoRA+SSTS (T=1)          & 1  & 57.7            & 49.6 \\
+\quad + KPTF           & 4  & 64.6 {\scriptsize (+6.9)}  & 53.9 {\scriptsize (+4.3)} \\
+\quad + KPTF           & 8  & 71.0 {\scriptsize (+13.3)}  & \textbf{58.1 {\scriptsize (+8.5)}} \\
+\quad + KPTF           & 16 & \textbf{76.1 {\scriptsize (+18.4)}}  & 57.3 {\scriptsize (+7.7)} \\
+\bottomrule
+\end{tabular}
+\end{table}

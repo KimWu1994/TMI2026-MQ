@@ -1,0 +1,28 @@
+% 6-shot comparison table (private dataset)
+\begin{table}[b]
+\centering
+\caption{Comparison of methods on 6-shot surgical phase recognition on our private CatPriv16 dataset.}
+\label{tab:6shot_private}
+\setlength{\tabcolsep}{4.0pt}
+\footnotesize
+\begin{tabular}{@{}l|ccccc@{}}
+\toprule
+\textbf{Method} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Jaccard} \\
+\midrule
+Trans-SVNet        & 68.2$\pm$0.4 & 55.3$\pm$1.0 & 45.1$\pm$1.7 & 45.0$\pm$1.0 & 35.9$\pm$0.9 \\
+TeCNO              & 56.4$\pm$2.0 & 39.8$\pm$3.1 & 36.8$\pm$3.7 & 32.5$\pm$3.1 & 25.7$\pm$2.7 \\
+MGTR-Net           & 70.3$\pm$0.7 & 54.2$\pm$1.2 & 50.8$\pm$0.7 & 48.6$\pm$0.8 & 40.5$\pm$0.7 \\
+TMRNet             & 70.4$\pm$0.6 & 54.5$\pm$0.8 & 50.6$\pm$0.5 & 48.6$\pm$0.7 & 40.2$\pm$0.7 \\
+Surgformer         & 66.3$\pm$0.4 & 49.4$\pm$0.1 & 44.7$\pm$1.4 & 43.1$\pm$1.2 & 35.5$\pm$1.0 \\
+MuST               & 65.7$\pm$0.2 & 49.6$\pm$1.4 & 43.5$\pm$0.2 & 42.1$\pm$0.4 & 32.9$\pm$0.3 \\
+LoViT$^\dagger$    & 59.2$\pm$2.0 & 36.5$\pm$0.4 & 35.7$\pm$0.4 & 31.6$\pm$0.4 & 24.0$\pm$0.3 \\
+SKiT$^\dagger$     & 62.4$\pm$0.8 & 36.5$\pm$0.7 & 36.8$\pm$1.0 & 33.2$\pm$0.1 & 26.2$\pm$0.2 \\
+\midrule
+DINO-SPR           & \textbf{74.5$\pm$0.2} & \textbf{71.8$\pm$1.9} & \textbf{60.1$\pm$1.2} & \textbf{58.9$\pm$0.7} & \textbf{49.9$\pm$0.3} \\
+\bottomrule
+\end{tabular}
+
+\vspace{6pt}
+\begin{spacing}{0.95}
+\end{spacing}
+\end{table}

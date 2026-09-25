@@ -1,0 +1,41 @@
+% Efficiency comparison — measured on a single CPU core (AMD EPYC 7543).
+% Forward-only, fp32, T=8 clip, batch 1, fps = T / (clip_latency_s),
+% median over rounds; raw clip_ms in latex/resources/:
+%   cpu_throughput_deployed.json  (Lite rows: deployed DistillStudent, 7x30)
+%   cpu_throughput_sota.json      (two-stage rows: ResNet50 + temporal, 5x20)
+%   cpu_throughput_final.json     (Surgformer / DINOv3 ViT-B surrogates)
+% Params are whole-model counts (backbone + temporal + head) for the Lite rows
+% and for Trans-SVNet (25.1M) / MGTR-Net (46.6M).  MuST is the exception: its
+% 68.0M is the reported four-stage pipeline (MViT + MTFE + TCM), whereas the
+% FPS comes from the ResNet50 surrogate actually timed here (37.2M).
+% GFLOPs count the backbone only (temporal overhead <0.1 G).
+% Full-node (64-thread) runs excluded: external load on the shared node made
+% small-model values swing 2-256 fps.
+% The two-stage rows are two-pass pipelines (ResNet50 features precomputed for
+% the whole video), so their FPS is a compute rate, not a streaming rate.
+\begin{table}[t]
+\centering
+\caption{Computational cost and performance on 6-shot Cholec80.}
+\label{tab:efficiency}
+\setlength{\tabcolsep}{3.0pt}
+\footnotesize
+\begin{tabular}{@{}l@{\hspace{2pt}}r r r r@{}}
+\toprule
+\textbf{Method} & \textbf{Params}$\downarrow$ & \textbf{GFLOPs}$\downarrow$ & \textbf{FPS}$\uparrow$ & \textbf{Jaccard}$\uparrow$ \\
+\midrule
+\multicolumn{5}{l}{\textbf{Prior SOTA}} \\
+\quad Trans-SVNet        & 25.1M  & 4.1  & 8.3  & 43.4 \\
+\quad MGTR-Net           & 46.6M  & 4.1  & 8.2  & 46.7 \\
+\quad MuST               & 68.0M  & 10.6 & 8.4  & 43.5 \\
+\quad Surgformer         & 121.3M & 22.5 & 2.7  & 48.6 \\
+\midrule
+\multicolumn{5}{l}{\textbf{DINO-SPR}} \\
+\quad DINOv3 ViT-B       & 92.0M  & 17.6 & 2.6  & 58.1 \\
+\midrule
+\multicolumn{5}{l}{\textbf{DINO-SPR Lite}} \\
+\quad TinyViT-5M         & 7.1M & 1.2  & 18.6 & 55.4 \\
+\quad StarNet-S4         & 8.9M & 1.1  & 26.0 & 55.2 \\
+\quad ConvNeXt-Atto      & 5.4M & 0.6  & 43.7 & 52.2 \\
+\bottomrule
+\end{tabular}
+\end{table}

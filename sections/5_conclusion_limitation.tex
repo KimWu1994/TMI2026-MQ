@@ -1,0 +1,57 @@
+\section{Conclusion and Limitations}
+\label{sec:conclusion}
+
+%%% Conclusion 设计要点（正文已写，注释为背景） %%
+% 风格：精炼，正文把 conclusion 与 limitations 合并成一段；回扣 intro 的三大卖点，不引入新内容。
+
+%%% 1. 回扣任务与方法（走故事线，避免流水账式总结） %%%
+% 任务：先讲 SPR 是智能手术室的基础任务 → 铺垫句只说临床落地有两大 challenge（先不点名）
+%   → 逐个讲：第一个 = label 稀缺（众所周知，一句带过）→ 引出 few-shot；
+%   第二个 = real-time → 引出蒸馏。顺序上先说 label，再说 real-time。
+% 方法：第一个（label）→ 简单对比 generic/surgical FMs → DINOv3 潜力大、甚至超 surgical FMs
+%   → 在其上做 video 适配（DINO-SPR，不展开模块细节）；
+%   第二个（real-time）→ 架构无关蒸馏（DINO-SPR Lite，几乎无损）。
+%%% 2. 结果总结（方法 / 部署） %%%
+% 方法：DINO-SPR 在 4 公开 + 1 私有数据集 few-shot 大幅超越 prior SOTA。
+% 部署：Lite 保留精度，参数大幅压缩、实时性显著提升。
+%%% 3. 临床意义 + 未来工作 %%%
+% 为低标注、实时可部署的智能手术室提供可行路径；
+% 未来：更多术式与多模态、真实临床硬件验证、更强蒸馏目标。
+
+%%% Limitation 设计要点（已并入同一段，正文已写，注释为背景） %%
+% 总基调：坦诚、客观，笼统总结，不点名具体模型/数据集，不引用表格，落到"未来可做"上。
+
+%%% 1. 只考虑公开权重的 FM，覆盖不全 %%%
+% 后果：所用 FM 的全面性受限。
+% 未来：期待社区开放更多权重。
+
+%%% 2. surgical FM 预训练存在手术数据泄露，FM 对比未必公平 %%%
+% 事实：surgical FM 不可避免地会在公开手术视频上预训练，部分可能与评测数据重叠、使其分数虚高，
+%   故 generic vs surgical 的 FM 对比不完全公平。
+% 未来：期待更严格的"未见术式"评估协议。
+
+%%% 3. 实时性未在真实临床硬件上验证 %%%
+% 未来：针对临床硬件做量化与工程优化。
+
+Surgical phase recognition is a fundamental task for intelligent operating
+rooms, and its clinical deployment hinges on two challenges. The first is the
+scarcity of expert labels, which makes few-shot recognition attractive. In
+this regime, a simple comparison of generic and surgical foundation models
+shows that DINOv3, although barely exposed to surgical data, surpasses
+surgical FMs, so we adapt it to surgical videos through a spatiotemporal
+tuning scheme, yielding DINO-SPR. The second is real-time inference, which the
+ViT backbone of DINO-SPR cannot meet, so we distill it into lightweight
+students of arbitrary architectures, obtaining DINO-SPR Lite. Across four
+public and one private dataset, DINO-SPR surpasses prior methods under
+few-shot settings, while DINO-SPR Lite retains this performance with under 9M
+parameters and exceeds the 25\,FPS on a single CPU,
+offering a practical route toward low-annotation, real-time deployment.
+Nevertheless, several limitations remain. First, we only consider foundation
+models with publicly released
+weights, so the coverage may not be exhaustive. Second, surgical FMs
+inevitably pre-train on public surgical videos, part of which may overlap with
+our evaluation data and inflate their scores, making the FM comparison not
+perfectly fair. Third, real-time efficiency is measured on a server CPU core
+rather than on clinical hardware, where quantization and further engineering
+optimization remain to be explored. We leave these for future work.
+
