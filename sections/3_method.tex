@@ -21,8 +21,8 @@
 \label{sec:method:overview}
 
 % 写作要点（缩写 SSTS/KPTF/CAP/STGD 已在 intro 展开，本节不再重复给全称）：
-% - 段 1：整体 roadmap——DINO-SPR = DINOv3 + spatiotemporal 适配（SSTS 空间 + KPTF
-%   时序），DINO-SPR Lite = architecture-agnostic 蒸馏（CAP + STGD）。模块只用缩写带过，
+% - 段 1：整体 roadmap——SPR-Teacher = DINOv3 + spatiotemporal 适配（SSTS 空间 + KPTF
+%   时序），SPR-Lite = architecture-agnostic 蒸馏（CAP + STGD）。模块只用缩写带过，
 %   不提 teacher/student 层级、参数/指标（放各自 subsection）。
 %   2026-09-12 refine：全段改"动机在前"（few-shot 数据太少 → 借 DINOv3 泛化 → encoder
 %   是 2D 无时序 → SSTS/KPTF → 资源受限 → 蒸馏 Lite），citation 上移到第一句。
@@ -35,15 +35,15 @@
 %   帧下标统一，直接给 $\mathbf{c}_t$、$\mathbf{P}_t$，因此 §3.2 开头与 §3.2.1 里
 %   两处重复定义已删。
 
-To overcome label scarcity in few-shot surgical phase recognition, we introduce \textsc{DINO-SPR}, unlocking DINOv3's~\cite{simeoni2025dinov3} generalization for the surgical domain.
-As illustrated in Figure~\ref{fig:method}, we first devise a spatiotemporal adaptation tuning that elevates independent frame-level features into sequence representations via SSTS and KPTF modules. By explicitly filtering the inherent redundancy of surgical videos to aggregate only the most discriminative spatiotemporal signals, this design imposes a strong inductive bias crucial for few-shot learning.
-For resource-constrained clinical deployment, we further distill it into \textsc{DINO-SPR Lite}, an architecture-agnostic student where CAP bridges representational gaps and STGD enriches sparse supervision with the teacher's priors.
+To overcome label scarcity in few-shot surgical phase recognition, we introduce \textsc{SPR-Teacher}, which adapts the generalization of a generic visual FM to the surgical domain.
+As illustrated in Fig.~\ref{fig:method}, we first devise a spatiotemporal adaptation tuning that elevates independent frame-level features into sequence representations via SSTS and KPTF modules. By explicitly filtering the inherent redundancy of surgical videos to aggregate only the most discriminative spatiotemporal signals, this design imposes a strong inductive bias crucial for few-shot learning.
+For resource-constrained clinical deployment, we further distill it, through architecture-agnostic distillation, into \textsc{SPR-Lite}, where CAP bridges representational gaps and STGD enriches sparse supervision with the teacher's priors.
 
 % ════════════════════════════════════════════════════════════════════
 
 
 % ════════════════════════════════════════════════════════════════════
-\subsection{Spatiotemporal Adaptation Tuning}  % → DINO-SPR (Phase 1 teacher)
+\subsection{Spatiotemporal Adaptation Tuning}  % → SPR-Teacher (Phase 1 teacher)
 \label{sec:method:video}
 
 % 大纲（本节引入段 + 两个子模块 SSTS/KPTF + Adaptation Objective）：
@@ -57,7 +57,7 @@ For resource-constrained clinical deployment, we further distill it into \textsc
 %   注入 surgical 归纳偏置，以极小 trainable 参数撬动 frozen backbone。
 % - → 落到两个模块 SSTS (§3.2.1) 和 KPTF (§3.2.2)。
 
-Given a surgical video clip $\mathbf{X} \in \mathbb{R}^{T \times 3 \times H \times W}$ of $T$ consecutive frames, our goal is to predict the surgical phase of the last frame. To leverage the robust representation of FMs, we employ DINOv3 as the frame-level feature extractor. Specifically, for each frame $\mathbf{X}_t \in \mathbb{R}^{3 \times H \times W}$, DINOv3 splits the image into a regular grid of $N$ non-overlapping patches. Following linear projection and the prepending of a learnable class token $\mathbf{z}_{cls}$, the input sequence $\mathbf{z}^{(0)}$ is formulated as
+Given a surgical video clip $\mathbf{X} \in \mathbb{R}^{T \times 3 \times H \times W}$ of $T$ consecutive frames, our goal is to predict the surgical phase of the last frame. To leverage the robust representation of FMs, we employ DINOv3 as the frame-level feature extractor. While we instantiate the framework with DINOv3, the adaptation operators below only assume a frozen image-level FM that emits per-frame tokens, so the framework does not hinge on a specific backbone. Specifically, for each frame $\mathbf{X}_t \in \mathbb{R}^{3 \times H \times W}$, DINOv3 splits the image into a regular grid of $N$ non-overlapping patches. Following linear projection and the prepending of a learnable class token $\mathbf{z}_{cls}$, the input sequence $\mathbf{z}^{(0)}$ is formulated as
 
 \begin{equation}
   \mathbf{z}^{(0)} = [\,\mathbf{z}_{cls};\; \mathbf{E}\mathbf{x}_1;\; \cdots;\; \mathbf{E}\mathbf{x}_N\,]
@@ -160,11 +160,11 @@ and the term be the cross-entropy of the gate against that selection,
 
 \noindent The term pulls the gate towards the top-$K$ selection, and it is smallest once the two
 agree.
-Since a patch that stays in between is penalised whichever side of $\mathcal{S}_t$ it falls on,
+Since a patch that stays in between is penalized whichever side of $\mathcal{S}_t$ it falls on,
 agreement can only be reached by saturation, which sends the background towards $0$ and the selected
 patches towards $1$ and turns the graded field of Eq.~\eqref{eq:ssts-weight} into a soft top-$K$.
-SSTS scores each patch with its spatial neighbourhood and the frame context, suppresses the background
-through a soft top-$K$, and fuses the patches into a frame token, one frame at a time.
+SSTS scores each patch with its spatial neighborhood and the frame context, suppresses the background
+through a soft top-$K$, and fuses the patches into the frame token.
 % ────────────────────────────────────────────────────────────────────
 \subsubsection{Keyframe-Prior Temporal Fusion}
 \label{sec:method:video:temporal}
@@ -245,9 +245,11 @@ $\hat{\mathbf{h}}$,
 sequence, and $\mathbf{e}_t$ a learnable temporal positional encoding that keeps the frame order.
 
 Surgical video is temporally redundant, as the field holds a steady state through most of a phase, and
-the frames that differ markedly from their neighbours carry the discriminative evidence.
-The keyframe-scoring branch rates each frame by its inter-frame difference
-$\boldsymbol{\delta}_t = \tilde{\mathbf{c}}_t - \tilde{\mathbf{c}}_{t-1}$, so that a frame of marked
+the frames that differ markedly from their neighbors carry the discriminative evidence.
+The keyframe-scoring branch, inspired by inter-frame temporal prompting~\cite{liu2025stop},
+rates each frame by its inter-frame difference
+$\boldsymbol{\delta}_t = \tilde{\mathbf{c}}_t - \tilde{\mathbf{c}}_{t-1}$ (with
+$\boldsymbol{\delta}_1=\mathbf{0}$), so that a frame of marked
 change outranks one that holds steady.
 A one-dimensional depthwise convolution $f_{\mathrm{dw}\text{-}1}$ of kernel size $3$ aggregates the
 difference sequence, whose mean squared magnitude gives the per-frame score $\tilde{\mathbf{w}}_t$.
@@ -290,7 +292,7 @@ captures the informative motions and yields a more accurate phase prediction.
 %   $L_{\mathrm{top}\text{-}K}$），与 §3.3.2 的 $L_\mathrm{rep}$、$L_\mathrm{stgd}$ 统一。
 
 The DINOv3 backbone stays largely frozen to preserve its general pretrained semantics. Only a
-small set of parameters is trained, the LoRA adapters on the query/value projections of the
+small set of parameters is trained, the LoRA adapters~\cite{hu2022lora} on the query/value projections of the
 last ViT block, the two adaptation modules SSTS and KPTF, and a linear classification head
 $f_{\mathrm{cls}}$.
 Training minimizes the phase cross-entropy together with the top-$K$ selection term of SSTS,
@@ -300,14 +302,14 @@ Training minimizes the phase cross-entropy together with the top-$K$ selection t
 \end{equation}
 
 % ════════════════════════════════════════════════════════════════════
-\subsection{Architecture-Agnostic Distillation}  % → DINO-SPR Lite (Phase 2 student)
+\subsection{Architecture-Agnostic Distillation}  % → SPR-Lite (Phase 2 student)
 \label{sec:method:distill}
 
 % 引入（承上启下 + 架构依赖问题 + 三大家族 + 两个设计模块，均不写具体数字）：
-% - 承上启下：DINO-SPR 做 spatiotemporal 适配后继承了 DINOv3 的泛化、few-shot 表现好，
+% - 承上启下：SPR-Teacher 做 spatiotemporal 适配后继承了 DINOv3 的泛化、few-shot 表现好，
 %   但仍是 architecture-dependent（绑死 DINOv3 ViT 形态）。
 % - 架构依赖的缺点：部署端灵活度不足、参数量大加载缓慢、推理效率低。
-% - 因此引入 architecture-agnostic 蒸馏 → DINO-SPR Lite：可蒸馏到任意架构轻量 student，
+% - 因此引入 architecture-agnostic 蒸馏 → SPR-Lite：可蒸馏到任意架构轻量 student，
 %   达到部署友好 + 实时推理。
 % - **2026-09-14 用户重构**：三大家族（CNN / ViT / hybrid）的铺陈**从 §3.3.1 上移到本段**，
 %   顺序是：主流轻量模型就这三家 → ViT 天然与 teacher 同形、不需要接口 → 问题集中在
@@ -317,15 +319,15 @@ Training minimizes the phase cross-entropy together with the top-$K$ selection t
 % - 两个设计模块：
 %   (1) CAP 跨架构表征投影：bridge ViT teacher 与不同架构 student 的表征差距，
 %       使蒸馏对 student 架构无关；
-%   (2) STGD 时空引导蒸馏：few-shot 下蒸馏信号 scarce，用 DINO-SPR 的 spatial/temporal
+%   (2) STGD 时空引导蒸馏：few-shot 下蒸馏信号 scarce，用 SPR-Teacher 的 spatial/temporal
 %       prior 引导 student，提升蒸馏效率。
 
-DINO-SPR inherits the generalization of DINOv3 and delivers promising few-shot
+SPR-Teacher inherits the generalization of DINOv3 and delivers promising few-shot
 performance, but it remains tied to the heavy ViT architecture, which restricts deployment
 flexibility and slows both loading and inference.
-We therefore distill it into \textsc{DINO-SPR Lite}, whose backbone can follow any mainstream
+We therefore distill it into \textsc{SPR-Lite}, whose backbone can follow any mainstream
 lightweight architecture.
-Those architectures fall into three families, CNN, ViT, and hybrid.
+Those architectures fall into three families: CNN, ViT, and hybrid.
 A ViT student already emits a class token and patch tokens in the teacher's form, whereas the other
 two architectures emit feature maps whose spatial cells might not match the teacher's tokens,
 so the teacher's spatial and temporal priors cannot be applied to them directly.
@@ -451,7 +453,7 @@ prediction $\hat{\mathbf{y}}^{s}$.
 %
 % ─── 线 2: STGD（时空引导蒸馏，承载全部中间信号）───
 % 承上启下：CAP 对齐特征空间之后，STGD 解决 few-shot 蒸馏信号稀疏的问题。
-% 动机：稀疏。标签太少 → 用 DINO-SPR 的 4 个 spatiotemporal 中间信号去弥补，
+% 动机：稀疏。标签太少 → 用 SPR-Teacher 的 4 个 spatiotemporal 中间信号去弥补，
 %   末尾再补常规的 logit 项（不再提 "logit-only KD 太稀疏" 的旧框架）。
 % 正式引入 4 个中间信号（一句，不用 "Two are..." 口语化）：
 %   表征类：saliency-condensed frame tokens $\tilde{\mathbf{c}}_{1:T}$ + clip-level feature
@@ -521,9 +523,9 @@ teacher's width $D$ with a shared linear projection, adding positional embedding
 layout.
 Each student token then has the teacher's width, so only their number remains to reconcile.
 CAP resolves the count mismatch on the query side.
-It keeps a set of learnable queries in the teacher's space, one for every token the student owes the
-teacher, a patch query for each of the teacher's patches plus a single class query for the class slot
-the student lacks.
+It keeps a set of learnable queries in the teacher's space, one per teacher token:
+a patch query for each of the teacher's patches, plus a single class query for the
+class slot the student lacks.
 Cross-attention emits one output per query, so the output length is decided by the queries rather
 than by the feature map.
 The $h\times w$ cells are therefore aggregated into exactly as many patch tokens $\mathbf{P}^{s}_t$
@@ -548,7 +550,9 @@ $\tilde{\mathbf{c}}_{1:T}\in\mathbb{R}^{T\times D}$ and the clip-level feature
 $\tilde{\mathbf{h}}\in\mathbb{R}^{D}$, while the prior signals are the spatial gates
 $\boldsymbol{\omega}_{1:T}\in\mathbb{R}^{T\times N}$ and the temporal weights
 $\mathbf{w}\in\mathbb{R}^{T}$.
-Both are normalized over their support, so each enters the KL as a distribution.
+The temporal weights $\mathbf{w}$ form a distribution over frames, and the
+spatial gates $\boldsymbol{\omega}_{t}$ are normalized over the patches, so
+each enters the KL as a distribution.
 The prior signals encode where and when the teacher attends, information that the scarce labels do
 not provide.
 The student pipeline exposes the same four signals
@@ -570,7 +574,7 @@ Together with $L_\mathrm{cap}$, these terms supervise every student module,
 supplementing the sparse few-shot labels with a dense distillation signal.
 
 \noindent\textbf{Overall objective.}
-The student is trained with the same tuning objective as the teacher with the two
+The student is trained with the teacher's tuning objective plus the two
 distillation terms,
 \begin{equation}
   L = L_\mathrm{tuning} + L_\mathrm{cap} + L_\mathrm{stgd}.

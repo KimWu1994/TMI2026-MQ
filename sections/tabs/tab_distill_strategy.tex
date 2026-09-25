@@ -2,7 +2,7 @@
 % Aligned to the overall objective L = L_CE + L_cap + L_stgd (STGD bundles the
 % representation, prior, and logit terms). One CNN student (ConvNeXt-Atto,
 % heterogeneous, the design target of CAP); two dataset columns. The student-only
-% baseline row is kept for reference. Same frozen DINO-SPR teacher (dsx_bilstm).
+% baseline row is kept for reference. Same frozen SPR-Teacher teacher (dsx_bilstm).
 % 6-shot, T=8, Jaccard (%). Gains vs. student-only in parentheses.
 % src: research_logs/CAP_architecture_agnostic_distillation.md
 % 2026-09-05: CE baseline matches the scaled ConvNeXt-Atto no-KD of tab_distill_models
@@ -19,7 +19,7 @@
 \toprule
 ConvNeXt-Atto (CNN) & Cataract101 & Cholec80 \\
 \midrule
-Student only ($L_\mathrm{CE}$)                & 50.2                   & 39.8                   \\
+Student only (w/o distillation)                & 50.2                   & 39.8                   \\
 + $L_\mathrm{cap}$ (CAP only)                 & 62.4 {\scriptsize (+12.2)} & 47.0 {\scriptsize (+7.2)} \\
 + $L_\mathrm{stgd}$ (STGD only)               & 59.0 {\scriptsize (+8.8)} & 44.8 {\scriptsize (+5.0)} \\
 + $L_\mathrm{cap}$ + $L_\mathrm{stgd}$ (Full method) & 71.6 {\scriptsize (+21.4)} & 52.2 {\scriptsize (+12.4)} \\

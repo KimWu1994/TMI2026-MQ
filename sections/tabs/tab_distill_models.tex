@@ -15,7 +15,7 @@
 %   Cataract101 and -3 on Cholec80. Distilled (w/ KD) values unchanged.
 \begin{table}[b]
 \centering
-\caption{Distillation of DINO-SPR into lightweight students on 6-shot settings.
+\caption{Distillation of SPR-Teacher into lightweight students on 6-shot settings.
 Each cell: student-only $\rightarrow$ distilled.}
 \label{tab:distill_models}
 \small
@@ -25,7 +25,7 @@ Each cell: student-only $\rightarrow$ distilled.}
 Model & Params$\downarrow$ & Cataract101$\uparrow$ & Cholec80$\uparrow$ \\
 \midrule
 \multicolumn{4}{l}{\textbf{Teacher}} \\
-\quad DINO-SPR (ViT-B)            & 92M  & 71.0            & 58.1 \\
+\quad SPR-Teacher (ViT-B)            & 92M  & 71.0            & 58.1 \\
 \midrule
 \multicolumn{4}{l}{\textbf{Pure CNN}} \\
 \quad ConvNeXt-Atto               & 5.4M & 50.2 $\rightarrow$ 71.6 & 39.8 $\rightarrow$ 52.2 \\

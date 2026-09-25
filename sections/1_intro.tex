@@ -1,44 +1,54 @@
 \section{Introduction}
 \label{sec:introduction}
 %%%%%%%%%%%%% 我们干了啥事 %%%%%%%%%%%%
-% 1.在 few-shot SPR 上对 generic/surgical FM 做了简单对比，发现 generic FM（DINOv3）潜力很大
-% 2.选择DINOv3作为generic FM，然后针对性设计了video适配的策略
-% 3.考虑临床部署挑战，提出了异构蒸馏策略
-% 4.我们实验丰富，public和private数据集都验证few-shot优势明显，实时性部分也极大提升
+% 0. 动机：FM 范式自身的两大临床缺陷——数据饥渴（需海量标注语料）+ 实时性差
+%   （参数爆炸跑不动临床硬件）；本文研究 = 修复这两个缺陷
+% 1. 修数据缺陷：不喂数据而是绕开——generic FM few-shot 不输 surgical FM
+%   （一句 motivation）→ SPR-Teacher 冗余感知适配（SSTS 压空间冗余 + KPTF 压时间
+%   冗余），冻结 generic FM + handful of labels 即可
+% 2. 修实时缺陷：SPR-Lite 蒸馏——CAP 跨架构 + STGD 时空先验稠密监督
+% 3. 实验：public + private 数据集 few-shot 优势明显，实时性部分也极大提升
 
 % 总结三大卖点：generic FM 适配、few-shot即可高acc、计算效率实时性轻量化
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \IEEEPARstart{S}{urgical} phase recognition (SPR), which identifies frame-wise surgical intentions from procedural videos, is foundational for intelligent operating rooms by supporting intraoperative decision support~\cite{vermeulen2023ultra}, real-time anomaly detection~\cite{mithany2023advancements}, and postoperative skill assessment~\cite{cao2023intelligent}. 
-Recently, the domain has shifted toward pre-training surgical foundation models (FMs) on expansive corpora~\cite{batic2024endovit,yang2026large,wu2026surgmotion}, demonstrating promising performance. 
-However, this relentless scaling introduces key clinical barriers that remain under-addressed. On one hand, curating massive surgical datasets incurs prohibitive annotation costs, privacy risks, and procedural biases. On the other hand, the associated parameter explosion renders heavy architectures computationally infeasible for resource-constrained clinical hardware. Crucially, practical SPR demands real-time inference, as instant intraoperative feedback directly impacts patient safety. Consequently, amid the push for larger surgical FMs, simultaneously overcoming heavy data reliance and deployment latency remains a critical yet overlooked challenge for practical SPR.
+Recently, the domain has shifted toward pre-training surgical foundation models (FMs) on expansive corpora~\cite{batic2024endovit,yang2026large,wu2026surgmotion}, which demonstrate promising performance. 
+The FM paradigm itself, however, carries two deficiencies that loom large in clinical practice. The first is its reliance on massive training data: curating expansive surgical corpora incurs prohibitive annotation costs, privacy risks, and procedural biases. The second is its inability to run in real time: the parameter explosion that accompanies scaling renders heavy architectures computationally infeasible for resource-constrained clinical hardware, while practical SPR demands real-time inference, as instant intraoperative feedback directly impacts patient safety. Consequently, overcoming the data hunger and the deployment latency of the FM paradigm remains a critical yet overlooked challenge for practical SPR.
 
-To address the data burden, general visual FMs offer a promising avenue by leveraging rich pretrained representations for downstream adaptation under limited supervision. Generic FMs have evolved rapidly across image and video domains, spanning self-supervised frameworks such as DINOv3~\cite{simeoni2025dinov3} and VideoMAEv2~\cite{wang2023videomae} alongside vision-language contrastive models like CLIP~\cite{radford2021learning} and InternVideo2~\cite{wang2024internvideo2}. Intriguingly, our systematic evaluation across five surgical datasets reveals that generic FMs match or outperform specialized surgical FMs in few-shot scenarios, despite lacking surgical pretraining exposure. Motivated by this observation, we select DINOv3 as the backbone and propose DINO-SPR, a novel spatiotemporal adaptation framework for few-shot settings. By incorporating salient spatial token selection (SSTS) and keyframe-prior temporal fusion (KPTF), DINO-SPR filters irrelevant background while preserving discriminative moments for effective video understanding. Consequently, with only a handful of labeled videos, this adaptation unlocks the strong potential of generic FMs for SPR without relying on massive surgical corpora.
+The data deficiency, we argue, can be sidestepped rather than satisfied: generic visual FMs already provide rich pretrained representations, and our systematic evaluation across five surgical datasets reveals that they match or outperform specialized surgical FMs in few-shot scenarios, despite lacking any surgical pretraining exposure (Sec.~\ref{sec:exp:fm_analysis}). We therefore build on a generic visual prior and propose SPR-Teacher, a redundancy-aware spatiotemporal adaptation framework that slashes the annotation requirement of SPR from massive corpora to a handful of labeled videos. Surgical videos exhibit a dual redundancy: background regions dominate the field, and steady-state frames repeat within each phase, diluting the already scarce supervision. Salient spatial token selection (SSTS) and keyframe-prior temporal fusion (KPTF) turn this redundancy into an inductive bias, filtering irrelevant background while preserving discriminative moments for effective video understanding. Consequently, SPR-Teacher breaks the FM paradigm's reliance on massive training data.
 
-Although DINO-SPR demonstrates remarkable data efficiency, its reliance on a heavy ViT backbone introduces heavy computational overhead and rigid deployment constraints. To overcome this bottleneck, we propose an architecture-agnostic distillation strategy that transfers the teacher into DINO-SPR Lite. To bridge the teacher-student structural discrepancy, a cross-attention projection (CAP) maps heterogeneous student feature maps into the teacher's token space, enabling flexible supervision across CNN, ViT, and hybrid architectures. Complementing this alignment, a spatiotemporally-guided distillation (STGD) transfers spatial and temporal priors into intermediate student representations, supplying the dense supervisory signals missing under scarce annotations. As shown in Fig.~\ref{fig:tradeoff}, the resulting DINO-SPR Lite models across three diverse student families achieve real-time CPU inference while approaching teacher-level accuracy, successfully reconciling accuracy and speed for clinical deployment.
+Although SPR-Teacher breaks the data reliance of the FM paradigm, it still inherits the second deficiency: as a heavy ViT, it incurs substantial computational overhead and rigid deployment constraints. To cure the real-time deficiency, we propose an architecture-agnostic distillation strategy that transfers the teacher into SPR-Lite. To bridge the teacher-student structural discrepancy, a cross-attention projection (CAP) maps heterogeneous student feature maps into the teacher's token space, enabling flexible supervision across CNN, ViT, and hybrid architectures. Complementing this alignment, a spatiotemporally-guided distillation (STGD) transfers spatial and temporal priors into intermediate student representations, supplying the dense supervisory signals missing under scarce annotations. As shown in Fig.~\ref{fig:tradeoff}, select SPR-Lite students drawn from three diverse backbone families exceed the 25\,FPS real-time threshold on a single CPU core while approaching teacher-level accuracy, successfully reconciling accuracy and speed for clinical deployment.
 
 
 \input{sections/figs/fig_tradeoff}
 
 
-Our contributions could be summarized as follow:
-% 贡献1：在 few-shot SPR 上对 representative 的 generic/surgical FM 做了简单对比，发现 generic FM DINOv3 的 few-shot 泛化潜力很大，由此选定 backbone
-% 我们设计了video adaptation的策略，把image-based的DINOv3模型快速适配到surgical video任务
-% 我们提出了异构模型蒸馏的方法，将few-shot适配后的DINOv3蒸馏到不同架构的轻量化模型，极大地提升了临床部署效率
-% 5个手术阶段识别数据集，其中包含一个私有数据集，广泛验证了我们的算法，在few-shot场景下的准确率表现大幅超越previous SOTAs，并且在轻量化部署方面也明显更优
+Our contributions are summarized as follows:
+% 贡献1：冗余感知的时空适配框架（SSTS 压空间冗余 + KPTF 压时间冗余），
+%   冻结 generic FM + 极少标注即可适配手术视频；FM benchmark 观察已降级为
+%   引言第 2 段的一句 motivation + §4.4.1 的 analysis，不再列为贡献。
+% 贡献2：架构无关蒸馏（CAP 跨架构接口 + STGD 时空先验稠密监督），
+%   任意轻量 backbone 均可实时部署。
+% 贡献3：4 公开 + 1 私有数据集 few-shot 大幅超越 prior SOTA；
+%   Lite <9M 参数、单核 CPU >25 FPS、精度接近 teacher。
 \begin{enumerate}
-    \item We benchmark representative visual FMs on few-shot SPR and find that the
-    generic DINOv3, although barely exposed to surgical data, already shows
-    strong generalization, which motivates our choice of backbone.
-    \item We devise a spatiotemporal adaptation tuning for DINOv3. The proposed SSTS and KPTF
-    modules concentrate on the discriminative regions and key moments, enabling
-    accurate adaptation under few-shot settings.
-    \item We propose an architecture-agnostic distillation that compresses
-    DINO-SPR into a lightweight student of any backbone, enabling flexible and real-time deployment.
-    \item Extensive experiments show that DINO-SPR substantially surpasses previous
-    state-of-the-art under few-shot settings, and DINO-SPR Lite retains this
-    performance with fewer parameters and higher inference efficiency.
+    \item We propose a redundancy-aware spatiotemporal adaptation framework
+    for few-shot SPR: SSTS compresses spatial redundancy via a soft top-$K$
+    saliency gate and KPTF compresses temporal redundancy via keyframe-prior
+    fusion, adapting a frozen image-level foundation model to surgical
+    video with only a handful of labeled videos.
+    \item We propose an architecture-agnostic distillation scheme that
+    compresses the adapted model into lightweight students of arbitrary
+    backbone families: CAP projects heterogeneous feature maps into the
+    teacher's token space, and STGD transfers the teacher's where- and
+    when-to-look priors as dense supervision to compensate for scarce
+    labels, enabling real-time CPU inference.
+    \item Extensive experiments on four public and one private datasets show
+    that our method surpasses prior state-of-the-art by large margins under
+    few-shot settings, while the distilled Lite models approach this accuracy
+    with under 9M parameters at over 25\,FPS on a single CPU core.
 \end{enumerate}
 
 

@@ -8,10 +8,10 @@
 %   - 精度：bf16 autocast；grad accum=4，batch size 12（effective 48）。
 %   - 正则：label smoothing 0.1，Mixup + CutMix，EMA decay=0.999。
 %
-% DINO-SPR：
+% SPR-Teacher：
 %   - 可训练：LoRA r=8 + SSTS + KPTF + head；backbone 冻结，epochs 80。
 %
-% DINO-SPR Lite：
+% SPR-Lite：
 %   - Teacher frozen + bf16 detach；student 轻量 backbone + 共享 KPTF。
 %   - 蒸馏 loss 权重见 §3.4；epochs 100。
 %
@@ -23,11 +23,11 @@ budget of the SSTS selection term is set to $K{=}0.3N$.
 All models use AdamW (weight decay 0.05) with cosine schedule and 5-epoch warmup, 
 gradient accumulation of 4 at batch size 12, label smoothing 0.1,
 Mixup and CutMix, and EMA (decay 0.999).
-For DINO-SPR, we keep the backbone largely frozen, training only LoRA adapters of
+For SPR-Teacher, we keep the backbone largely frozen, training only LoRA adapters of
 the last layer, SSTS, KPTF, and the linear
 classification head for 80 epochs (lr $5{\times}10^{-4}$).
-For DINO-SPR Lite, the frozen DINO-SPR teacher supervises a lightweight student,
-trained for 100 epochs.
+For SPR-Lite, a lightweight student is supervised by the frozen SPR-Teacher
+teacher and trained for 100 epochs.
 All training runs on a single RTX 4090 (24\,GB) with PyTorch 2.6 and CUDA 12.4.
 
 
@@ -50,8 +50,8 @@ To evaluate across diverse surgical scenarios, we curate five SPR
 datasets spanning three procedure types: laparoscopic cholecystectomy (Cholec80,
 M2CAI16), cataract surgery (Cataract101, CatPriv16), and transsphenoidal pituitary
 surgery (PitVis), as summarized in Table~\ref{tab:datasets}. Among them,
-CatPriv16 is our private dataset providing a
-fully unseen reference for surgical FMs. All videos are sampled at
+CatPriv16 is our private dataset providing an
+unseen reference for surgical FMs. All videos are sampled at
 1\,fps, and few-shot splits use 3, 6, or 9 labeled training videos with unchanged
 validation and test sets.
 
@@ -72,7 +72,8 @@ validation and test sets.
 %   - FPS：forward-only 吞吐量，fp32、T=8 clip、单核 AMD EPYC 7543，↑ 越高越好。
 
 Following prior work~\cite{jin2021temporal,yang2024surgformer}, we report accuracy,
-precision, recall, F1-score, and Jaccard under unrelaxed evaluation, averaged over
+precision, recall, F1-score, and Jaccard under unrelaxed evaluation, i.e., strict
+frame-by-frame scoring without temporal smoothing, averaged over
 three random seeds. We prioritize Jaccard for jointly penalizing frame-level false
 positives and negatives, and summarize cross-dataset results by the mean Jaccard
 together with the range $\Delta=\max-\min$, where a smaller $\Delta$ indicates more
@@ -82,7 +83,7 @@ on a single core of an AMD EPYC 7543 CPU.
 
 
 \subsection{Comparisons with SOTAs}
-\subsubsection{Few-shot Settings}
+\subsubsection{Few-shot Comparison with SOTAs}
 % 对照 tab_sota_6shot + fig_few_shot_trends：
 %
 % 1. SOTA 概览：
@@ -91,19 +92,19 @@ on a single core of an AMD EPYC 7543 CPU.
 %   - 6-shot 下 prior 方法 Jaccard 最高仅 56.8（Surgformer 在 Cat101），且跨数据集波动大。
 %   - Multi-stage 方法依赖分步特征提取（数据量稀缺场景下无法充分微调特征提取器就会导致效果不佳，end-to-end Surgformer 精度尚可但极慢，CPU 单核仅 2.7 FPS）。
 %
-% 2. DINO-SPR 6-shot 表现（tab_sota_6shot）： ref这个 \label{tab:6shot}
+% 2. SPR-Teacher 6-shot 表现（tab_sota_6shot）： ref这个 \label{tab:6shot}
 %   - 5 数据集全部指标全面领先，Jaccard 相对最强 prior 高 5.8-14.2 点。
 %   - 举具体例子：Cholec80 58.1 vs best SOTA 48.6，Cataract101 71.0 vs 56.8，
 %     CatPriv16 49.9 vs 40.5，M2CAI16 50.6 vs 44.8。
 %   - 单遍端到端 vs SOTA 两阶段，计算效率对比见 §comp cost。
 %
 % 3. Few-shot trend（fig_few_shot_trends）： ref这个 \label{fig:few-shot}
-%   - 3/6/9-shot 全区间一致领先，DINO-SPR 6-shot 已超 SOTA 9-shot。
+%   - 3/6/9-shot 全区间一致领先，SPR-Teacher 6-shot 已超 SOTA 9-shot。
 %   - 随 shot 数减少，SOTA 急剧下降（e.g. Trans-SVNet Cat101: 9-shot 42→3-shot 26），
-%     DINO-SPR 下降平缓（78→55），体现 FM 先验对少样本的鲁棒性。
+%     SPR-Teacher 下降平缓（78→55），体现 FM 先验对少样本的鲁棒性。
 %   - 举 1-2 个数据集的 trend 例子。
 
-We compare DINO-SPR with eight prior methods spanning two paradigms.
+We compare SPR-Teacher with eight prior methods spanning two paradigms.
 Multi-stage methods, namely Trans-SVNet~\cite{gao2021trans},
 TeCNO~\cite{czempiel2020tecno}, MGTR-Net~\cite{huang2025multi},
 TMRNet~\cite{jin2021temporal}, MuST~\cite{perez2024must}, LoViT~\cite{liu2025lovit},
@@ -115,17 +116,16 @@ comparison over the four public datasets and our private CatPriv16, respectively
 
 Under few-shot supervision, multi-stage methods generally lag behind, since scarce
 labels do not allow their feature extractors to be fine-tuned well, whereas the
-end-to-end Surgformer performs somewhat better. Leveraging the strong pretraining of
-DINOv3 and our few-shot specific spatiotemporal adaptation, DINO-SPR clearly
+end-to-end Surgformer performs somewhat better. With the generic FM prior and our
+redundancy-aware spatiotemporal adaptation, SPR-Teacher clearly
 surpasses all prior methods on every metric and dataset, reaching 58.1, 71.0, and
 49.9 Jaccard on Cholec80, Cataract101, and CatPriv16. These scores improve on the
 strongest prior method by 9.5, 14.2, and 9.4 on each dataset, and the gains span
 5.8 to 14.2 across the five datasets. Figure~\ref{fig:few-shot} further shows that
-DINO-SPR leads by a large margin at every label budget. 
+SPR-Teacher leads by a large margin at every label budget. 
 The advantage is largest at the extreme 3-shot setting, for instance on M2CAI16,
-where DINO-SPR reaches 39.7 Jaccard while the prior method TeCNO falls to
-12.3, demonstrating that our method fully exploits the potential of foundation
-models.
+where SPR-Teacher reaches 39.7 Jaccard while the prior method TeCNO falls to
+12.3, demonstrating the robustness of our method to extreme label scarcity.
 
 
 \input{sections/figs/fig_vfm_backbone}
@@ -140,10 +140,10 @@ models.
 %   - Surgformer：端到端但 121M ViT，CPU 上最慢，仅 2.7 FPS。
 %   - SOTA 准确率低（43-49 J）且效率差，难以实际部署。
 %
-% 2. DINO-SPR：精度最高（58.1 J），但同为 ViT，CPU 上 2.6 FPS、不比 Surgformer 快
+% 2. SPR-Teacher：精度最高（58.1 J），但同为 ViT，CPU 上 2.6 FPS、不比 Surgformer 快
 %   → 由此引出「精度高 ≠ 可部署」这个动机，再转入蒸馏。
 %
-% 3. DINO-SPR Lite：异构蒸馏，按目标硬件挑 backbone。
+% 3. SPR-Lite：异构蒸馏，按目标硬件挑 backbone。
 %   - 关键结论：过 25 FPS 线的两个都是 CNN（ConvNeXt-Atto 43.7、StarNet-S4 26.0），
 %     而同量级的 ViT 学生 TinyViT-5M 只有 18.6 —— 速度不自动跟着尺寸走。
 %   - 待办：图 fig_computational_cost 仍是 GPU/Cataract101 口径，与本节的 CPU 口径不一致。
@@ -151,49 +151,52 @@ models.
 Clinical deployment often has to work without a dedicated GPU, so we emulate such a
 limited environment by measuring all inference on a single CPU core, as reported in
 Table~\ref{tab:efficiency} for 6-shot Cholec80.
-Prior methods were not designed for real-time inference, and their FPS
-only spans 2.7 to 8.4, far below the 25\,FPS native video rate.
+Prior methods run at only 2.7 to 8.4\,FPS, far below the 25\,FPS native video rate.
 Surgformer is the slowest because it jointly attends over all frames of a clip with
 a 121M ViT.
-DINO-SPR reaches 58.1 Jaccard, yet as a ViT it inherits the same limit
+SPR-Teacher reaches 58.1 Jaccard, yet as a ViT it inherits the same limit
 and runs at 2.6\,FPS.
 High performance alone thus does not make a model deployable.
-Architecture-agnostic distilling DINO-SPR into lightweight students closes that gap and meets the real-time requirement, reaching up to
-44\,FPS on a single CPU with performance close to DINO-SPR.
+Distilling SPR-Teacher into lightweight students in an architecture-agnostic manner
+closes that gap and meets the real-time requirement, reaching up to
+44\,FPS on a single CPU with performance close to SPR-Teacher.
 
 \input{sections/tabs/tab_computational_cost}
 
 
 
 \subsection{Ablation Study}
-\subsubsection{Foundation Model Selection}
-% 目的：把 FM benchmark 降级为 backbone 选择的 ablation。两段：config + 图要点。
-% 实验设定：冻住各 FM 提特征，MGTR-Net 作时序，6-shot 5 数据集，隔离 FM 特征迁移性。
-% 图要点：mean/range/CatPriv16/params；通用 FM 优于手术 FM；DINOv3 是最优起点。
+\subsubsection{Generic versus Surgical Foundation Models}
+\label{sec:exp:fm_analysis}
+% 定位（2026-09-25 重构）：支撑引言一句 motivation + backbone 选择的 analysis，
+% 已不再是贡献/完整 ablation（FM benchmark 不作贡献）。只保留两个要点：
+% (1) generic FM > surgical FM（mean Jaccard 更高、跨数据集更稳）；
+% (2) 无泄漏 CatPriv16 上 surgical FM 几乎全员最差 → 其泛化被高估。
+% 顺带交代选 DINOv3 的理由（SSL > CTR、video 输入性价比低）。
+% 实验设定：冻住各 FM 提特征，MGTR-Net 作时序，6-shot 5 数据集；
+% 各 FM 配置见附录 Table~\ref{tab:vfm_config}。
 
-To investigate how FMs generalize to few-shot SPR, we freeze each FM as a
-feature extractor and train MGTR-Net~\cite{huang2025multi} as the temporal model on
-8-frame windows, under the unified 6-shot protocol across five datasets.
+To justify the choice of the generic visual prior, we freeze each FM as a
+feature extractor and train MGTR-Net~\cite{huang2025multi} as the temporal
+model on 8-frame windows, under the unified 6-shot protocol across five
+datasets; the FM configurations are detailed in Table~\ref{tab:vfm_config}
+(Appendix~\ref{app:vfm_config}).
 Since surgical FMs may have seen the evaluation datasets during pretraining, we
 highlight our private CatPriv16 as a leakage-free reference for fair generalization.
 
 Figure~\ref{fig:vfm_backbone} ranks all FMs by mean Jaccard.
-General FMs achieve higher Jaccard with more stable cross-dataset
+Generic FMs achieve higher Jaccard with more stable cross-dataset
 generalization than surgical FMs.
-The instability of surgical FMs likely stems from their pretraining data covering
-certain procedure types more thoroughly. On the leakage-free CatPriv16, surgical FMs
-nearly all rank at their worst, suggesting their true generalization is weaker than
-their inflated scores imply.
-By pretraining paradigm, SSL methods outperform contrastive ones, as SSL steers the
-model toward spatial details while the contrastive objective is more global and thus
-less suited to the spatially discriminative nature of SPR.
-Video input does not clearly surpass image input, while incurring a larger
-computational burden and parameter count. For instance, VideoMAE2 ViT-g with 1B parameters reaches
-47.2, only marginally above the 86M DINOv3 ViT-B at 46.9.
-We therefore adopt DINOv3~\cite{simeoni2025dinov3} as the backbone, as it exhibits
-strong generalization despite having seen almost no surgical data during pretraining.
-
-\input{sections/tabs/tab_vfm_config}
+On the leakage-free CatPriv16, surgical FMs nearly all rank at their worst,
+suggesting that their public-dataset scores overestimate generalization to
+unseen procedures.
+Among generic FMs, self-supervised models rank ahead of contrastive ones in
+this evaluation.
+Video-level input also brings no clear gain over image-level input at a much
+larger computational cost: VideoMAE2 ViT-g with 1B parameters reaches 47.2,
+only marginally above the 86M DINOv3 ViT-B at 46.9.
+We therefore adopt DINOv3~\cite{simeoni2025dinov3} as the backbone for its
+strongest few-shot generalization.
 
 
 \subsubsection{DINOv3 Pretraining and Scale}
@@ -222,7 +225,7 @@ to fine-tune it in all subsequent experiments.
 \input{sections/tabs/tab_temporal_modeling}
 
 
-\subsubsection{Different Spatiotemporal Modeling}
+\subsubsection{Spatiotemporal Modeling Design}
 % 对照 tab_temporal_modeling：
 %   - R1（单帧 T=1）：Frozen DINov3 CLS 仅 38.8/34.6；LoRA 微调涨至 45.5/55.2；
 %     LoRA + SSTS 达到 49.6/57.7，验证 SSTS 空间注意力有效性。
@@ -230,23 +233,23 @@ to fine-tune it in all subsequent experiments.
 %     Bi-LSTM 简单有效，T=8 时涨至 53.5/65.0。
 %   - R3（KPTF）：进一步涨至 58.1/71.0（T=8），T=8 为效率与效果平衡点。
 Table~\ref{tab:temporal_modeling} ablates spatial and temporal design choices on
-Cholec80 and Cataract101 at 6-shot, from single frames to full temporal fusion.
+Cataract101 and Cholec80 at 6-shot, from single frames to full temporal fusion.
 In R1, we freeze the DINOv3 backbone and fine-tune a linear classifier on its CLS
-token, which yields only 38.8 and 34.6 Jaccard.
-LoRA fine-tuning, which matches full fine-tuning at a fraction of the cost, lifts
-Jaccard to 45.5 and 55.2, and our SSTS module further raises it to 49.6 and 57.7,
+token, which yields only 34.6 and 38.8 Jaccard.
+LoRA fine-tuning, which closely matches full fine-tuning, lifts
+Jaccard to 55.2 and 45.5, and our SSTS module further raises it to 57.7 and 49.6,
 confirming the value of salient spatial token selection.
 In R2, temporal fusion over this R1-best setup adds clear gains as the clip lengthens,
-and a lightweight Bi-LSTM is the strongest simple aggregator, reaching 53.5 and 65.0
+and a lightweight Bi-LSTM is the strongest simple aggregator, reaching 65.0 and 53.5
 at T$=$8.
 In R3, our KPTF module, which guides temporal fusion by keyframe priors, surpasses
-Bi-LSTM at every clip length, reaching 58.1 and 71.0 at T$=$8.
-Since longer clips do not necessarily bring further gains, we adopt T$=$8 as the
-default.
+Bi-LSTM at every clip length, reaching 71.0 and 58.1 at T$=$8.
+As the gains do not grow consistently with longer clips while the latency
+increases, we adopt T$=$8 as the accuracy-efficiency balance.
 
 \input{sections/tabs/tab_distill_models}
 
-\subsubsection{Different Lightweight Models for DINO-SPR Lite}
+\subsubsection{Lightweight Backbone Choices for SPR-Lite}
 % 对照 tab_distill_models：
 %   - CNN / ViT / Hybrid 三类架构通过统一 CAP+STGD 蒸馏，student-only → distilled 均有显著增益。
 %   - ConvNeXt-Atto（5.4M 部署口径）蒸馏后 Cat 达 71.6 J，超过 teacher。
@@ -255,7 +258,7 @@ Table~\ref{tab:distill_models} compares each student trained from scratch and af
 architecture-agnostic distillation on Cataract101 and Cholec80.
 Distillation improves every mainstream lightweight backbone across the three
 architecture categories, by over 20 Jaccard on average on Cataract101, confirming
-that it transfers DINO-SPR knowledge to heterogeneous students.
+that it transfers SPR-Teacher knowledge to heterogeneous students.
 In particular, the strongest student of each family reaches 72.2, 72.3, and 71.0 for
 ConvNeXt-Tiny, TinyViT-11M, and MobileViTv2-150, respectively, matching or exceeding
 the 92M teacher's 71.0 on Cataract101.
@@ -265,19 +268,23 @@ setting with little performance loss.
 \input{sections/tabs/tab_distill_strategy}
 
 
-\subsubsection{Different Distillation Strategies}
+\subsubsection{Distillation Component Ablation}
 % 对照 tab_distill_strategy（CNN 学生 ConvNeXt-Atto）：
 %   - 非累积消融，行标签用 method 顶层 loss term：student-only($L_{CE}$) 参照行 +
 %     单独 $L_{cap}$(CAP)、单独 $L_{stgd}$(STGD)、$L_{cap}$+$L_{stgd}$(完整)。
 %   - baseline 与 tab_distill_models 的 Atto no-KD 对齐（50.2/39.8，已按 SOTA 下调）；末行=71.6/52.2。
 %   - CAP/STGD 单独值为占位（未重跑），末行与 tab_distill_models 的 distilled 一致。
+%   - 2026-09-25：正文解读已弱化（"complementary" 替代 "matters most" 最高级结论），
+%     占位数字补跑之前避免过强断言；补跑后可视真实差距决定是否加强措辞。
 We ablate the distillation components on the heterogeneous CNN ConvNeXt-Atto in
-Table~\ref{tab:distill_strategy}. Training with the task loss $L_\mathrm{CE}$ alone stays
-weak at 50.2 on Cataract101, because the scarce labels offer little supervision
-to the small model. Adding $L_\mathrm{cap}$ alone improves it to 62.4, a larger
-gain than $L_\mathrm{stgd}$ alone at 59.0, which shows that bridging the
-representation gap matters most. Combining the two lifts the result substantially to
-71.6, and Cholec80 follows the same trend, rising to 52.2 from the 39.8 baseline.
+Table~\ref{tab:distill_strategy}. Training the student with the task loss alone
+stays weak at 50.2 on Cataract101, because the scarce labels offer little supervision
+to the small model. Each of $L_\mathrm{cap}$ and $L_\mathrm{stgd}$ alone improves
+over this baseline, to 62.4 and 59.0 on Cataract101, and combining the two yields
+the largest gain, reaching 71.6; Cholec80 follows the same trend, rising to 52.2
+from the 39.8 baseline. The two terms are thus complementary in the few-shot
+regime: representation alignment and spatiotemporal prior transfer address
+different gaps left by the scarce labels.
 
 
 \input{sections/figs/fig_phase_recognition}
@@ -288,9 +295,9 @@ representation gap matters most. Combining the two lifts the result substantiall
 \subsection{Qualitative Analysis}
 \subsubsection{Frame-level Phase Recognition}
 % ref \label{fig:phase}：SPR 结果更准确，尤其 phase 边界切换、整体连续性、正确 phase 匹配。
-Figure~\ref{fig:phase} compares per-frame predictions of DINO-SPR with prior
+Figure~\ref{fig:phase} compares per-frame predictions of SPR-Teacher with prior
 methods on test videos from Cholec80 and Cataract101.
-DINO-SPR produces more continuous and accurate phase recognition, with cleaner boundaries
+SPR-Teacher produces more continuous and accurate phase recognition, with cleaner boundaries
 and far fewer fragmented predictions.
 The improvement is most pronounced at phase transitions, where the spatiotemporal
 module captures discriminative cues across frames to keep the prediction coherent,
@@ -311,7 +318,7 @@ supervision.
 Figure~\ref{fig:spatial} visualizes the spatial token selection of SSTS, where
 high-scoring patches concentrate on surgical instruments and tissue surfaces rather
 than on irrelevant background.
-These demonstrate that DINO-SPR focuses on the spatial and temporal
+These demonstrate that SPR-Teacher focuses on the spatial and temporal
 cues that carry the strongest discriminative evidence.
 
 

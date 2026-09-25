@@ -5,14 +5,14 @@
 % 风格：精炼，正文把 conclusion 与 limitations 合并成一段；回扣 intro 的三大卖点，不引入新内容。
 
 %%% 1. 回扣任务与方法（走故事线，避免流水账式总结） %%%
-% 任务：先讲 SPR 是智能手术室的基础任务 → 铺垫句只说临床落地有两大 challenge（先不点名）
-%   → 逐个讲：第一个 = label 稀缺（众所周知，一句带过）→ 引出 few-shot；
-%   第二个 = real-time → 引出蒸馏。顺序上先说 label，再说 real-time。
-% 方法：第一个（label）→ 简单对比 generic/surgical FMs → DINOv3 潜力大、甚至超 surgical FMs
-%   → 在其上做 video 适配（DINO-SPR，不展开模块细节）；
-%   第二个（real-time）→ 架构无关蒸馏（DINO-SPR Lite，几乎无损）。
+% 动机：FM 范式自身两大临床缺陷——数据饥渴 + 实时性差 → 本文研究 = 修复二者
+% 统一视角：手术视频双重冗余（空间背景 + 时间稳态帧）是数据缺陷背后的关键障碍
+% 方法：对抗冗余两阶段——
+%   修数据缺陷 SPR-Teacher：SSTS 压空间冗余 + KPTF 压时间冗余，冻结 generic FM + 少量标注；
+%   修实时缺陷 SPR-Lite：CAP 跨架构 + STGD 时空先验稠密监督。
+%   （不复述 generic vs surgical FM 对比——那已降级为引言一句 motivation）
 %%% 2. 结果总结（方法 / 部署） %%%
-% 方法：DINO-SPR 在 4 公开 + 1 私有数据集 few-shot 大幅超越 prior SOTA。
+% 方法：SPR-Teacher 在 4 公开 + 1 私有数据集 few-shot 大幅超越 prior SOTA。
 % 部署：Lite 保留精度，参数大幅压缩、实时性显著提升。
 %%% 3. 临床意义 + 未来工作 %%%
 % 为低标注、实时可部署的智能手术室提供可行路径；
@@ -34,18 +34,24 @@
 % 未来：针对临床硬件做量化与工程优化。
 
 Surgical phase recognition is a fundamental task for intelligent operating
-rooms, and its clinical deployment hinges on two challenges. The first is the
-scarcity of expert labels, which makes few-shot recognition attractive. In
-this regime, a simple comparison of generic and surgical foundation models
-shows that DINOv3, although barely exposed to surgical data, surpasses
-surgical FMs, so we adapt it to surgical videos through a spatiotemporal
-tuning scheme, yielding DINO-SPR. The second is real-time inference, which the
-ViT backbone of DINO-SPR cannot meet, so we distill it into lightweight
-students of arbitrary architectures, obtaining DINO-SPR Lite. Across four
-public and one private dataset, DINO-SPR surpasses prior methods under
-few-shot settings, while DINO-SPR Lite retains this performance with under 9M
-parameters and exceeds the 25\,FPS on a single CPU,
-offering a practical route toward low-annotation, real-time deployment.
+rooms. In the foundation model era, its clinical deployment is hindered by
+two deficiencies of the FM paradigm itself: a reliance on massive training
+data and an inability to infer in real time on clinical hardware. We argue
+that the dual redundancy of surgical videos---dominant background regions and
+repetitive steady-state frames---is the key obstacle behind the data
+deficiency, and propose to combat it in both the model and its
+distillation. SPR-Teacher compresses spatial redundancy through salient spatial
+token selection and temporal redundancy through keyframe-prior temporal
+fusion, adapting a frozen generic foundation model with only a handful of
+labeled videos. SPR-Lite then lifts the real-time deficiency by
+compressing the model itself, where a
+cross-attention projection bridges arbitrary student architectures and a
+spatiotemporally-guided distillation transfers the teacher's where- and
+when-to-look priors as dense supervision. Across four public and one private
+dataset, SPR-Teacher surpasses prior methods under few-shot settings by large
+margins, while SPR-Lite retains this performance with under 9M
+parameters at over 25\,FPS on a single CPU core, offering a practical route
+toward low-annotation, real-time deployment.
 Nevertheless, several limitations remain. First, we only consider foundation
 models with publicly released
 weights, so the coverage may not be exhaustive. Second, surgical FMs

@@ -1,118 +1,16 @@
 \section{Related Work}
 \label{sec:related_work}
 
-%%% 这一段：传统统计方法 → 深度学习 CNN 方法 %%%
-% 传统方法依赖手工特征提取 + 统计分类器
-% Klank 等：专用特征提取器 + SVM 识别手术阶段
-% Padoy 等：HMM 建模腹腔镜胆囊切除术的时序动态
-% 传统方法局限：手工特征费人力、难以捕捉复杂模式
-% CNN 革命：从大规模标注数据自动学习特征
-% EndoNet：多任务 CNN，同时学习相位识别与器械检测
-% 混合架构：CNN-LSTM 自监督预训练、memory 增强 LSTM、SV-RCNet
-% 时序卷积：TeCNO 多阶段膨胀 TCN 捕获长程依赖
-% 3D CNN：端到端联合学习时空表征
-% 小结：多数方法时空两阶段分离
-% \subsection{Surgical Phase Recognition}
-% Early surgical phase recognition relied on handcrafted features followed by
-% statistical classification, using SVM classifiers on specialized endoscopic
-% features~\cite{klank2008automatic} and HMMs to model temporal dynamics~\cite{padoy2012statistical}.
-% These methods, however, were labor-intensive and limited in capturing complex
-% patterns.
-% The first CNN method EndoNet~\cite{twinanda2016endonet}, a multi-task
-% model that jointly predicts phases and tool presence, revolutionized this paradigm by enabling automatic feature learning from annotated data.
-% Building on this, hybrid architectures combining 2D CNNs with temporal modeling
-% emerged, spanning long short-term memory (LSTM) networks trained via
-% self-supervised pretraining~\cite{yengera2018less}, memory-augmented LSTM
-% variants capturing historical context~\cite{jin2021temporal}, and
-% SV-RCNet~\cite{jin2017sv} integrating CNNs with recurrent modules for end-to-end
-% spatiotemporal modeling.
-% Temporal convolutions such as TeCNO~\cite{czempiel2020tecno} and 3D CNNs~\cite{kitaguchi2021development, zhang2021surgical}
-% were further adopted to capture long-range dependencies and jointly model spatial
-% and temporal representations.
-% Building on these long-range modeling efforts, transformer architectures shifted
-% the design to self-attention, which better captures long-range dependencies across
-% the whole sequence.
-% Trans-SVNet~\cite{gao2021trans} first applies transformers to SPR by merging
-% spatial and temporal embeddings, followed by the video transformers
-% SKiT~\cite{liu2023skit} and LoViT~\cite{liu2025lovit}, which pair a feature extractor
-% with a transformer head, and Surgformer~\cite{yang2024surgformer}, which further
-% adopts an end-to-end design that models long-range temporal dependencies from
-% sparse frames via divided spatial-temporal attention.
-% Despite these advances, transformer-based models still require extensive
-% annotated data and high cost, constraining deployment.
-
 \subsection{Surgical Phase Recognition}
 Early surgical phase recognition relied on handcrafted endoscopic features paired with statistical classifiers such as SVMs~\cite{klank2008automatic} and HMMs~\cite{padoy2012statistical}, which exhibited limited capacity in modeling complex surgical dynamics. The advent of EndoNet~\cite{twinanda2016endonet} revolutionized this task by introducing automatic CNN feature learning. Subsequent frameworks integrated 2D CNNs with recurrent modules or LSTMs to capture temporal dependencies~\cite{yengera2018less,jin2021temporal,jin2017sv}, while temporal convolutions~\cite{czempiel2020tecno} and 3D CNNs~\cite{kitaguchi2021development,zhang2021surgical} further unified spatial and temporal representations. Recently, transformer architectures have shifted the design toward self-attention mechanisms for sequence-level dynamics. These include Trans-SVNet~\cite{gao2021trans}, which merges spatial and temporal embeddings, video transformers like SKiT~\cite{liu2023skit} and LoViT~\cite{liu2025lovit} combining feature extractors with temporal heads, and Surgformer~\cite{yang2024surgformer} with divided spatiotemporal attention. Despite their strong performance, these transformer-based models remain constrained by heavy reliance on extensive annotated data and prohibitive computational costs, hampering practical clinical deployment.
 
 
-%%% 这一段：通用基础模型（Generic FM） %%%
-% 共性：海量通用数据预训练，习得普适视觉先验，强迁移能力，少量样本即可适配下游任务
-% 图片类：
-%   - 自监督 DINO 系列：DINOv3（1.7B images，ViT-S/B/L/H），只说最新版本
-%   - 图文对齐 CLIP：400M image-text pairs 这里突出一下这个范式的优势是可以从网上找到海量的配对数据 即使不完美
-% 视频类：
-%   - VideoMAE / VideoMAE2：masked video modeling，1.35M videos
-%   - InternVideo / InternVideo2：video-text 联合预训练（MAE + alignment）
-%   - V-JEPA / V-JEPA2：latent prediction（JEPA），2M videos
-% 关键观察：受益于巨量的数据预训练和更好的工程实现，即便几乎未见过手术数据，few-shot 潜力大 跨域表现依旧稳健（呼应 intro benchmark）
-% \subsection{Generic and Surgical Foundation Models}
-% Beyond task-specific architectures, generic foundation models (FMs) pre-train on
-% large-scale general-purpose data and acquire universal visual priors with strong
-% transferability.
-% These FMs fall into two families: self-supervised learning (SSL), which predicts
-% masked or latent representations, and image-text contrastive learning.
-% In the image domain, DINOv3~\cite{simeoni2025dinov3} uses SSL via self-distillation
-% on 1.7B curated images, while CLIP~\cite{radford2021learning} aligns images and text
-% through contrastive learning on 400M web-crawled image-text pairs, exploiting the
-% naturally paired images and captions on the internet.
-% Video FMs follow the same two categories. VideoMAE2~\cite{wang2023videomae} and
-% V-JEPA2~\cite{assran2025v} apply SSL on 1.35M and 2M videos, whereas
-% InternVideo2~\cite{wang2024internvideo2} combines masked video modeling with
-% video-text alignment.
-% Benefiting from such massive-scale pre-training, generic FMs exhibit strong
-% few-shot potential and robust cross-domain performance.
-
-% %%% 这一段：手术基础模型（Surgical FM） %%%
-% % 兴起：收集多样化手术数据集，采用与 generic FM 类似的预训练配方，构建领域 FM
-% % 按预训练范式分组介绍代表工作：
-% %   图片级 SSL：
-% %     - EndoViT（MAE，Endo700k 约 70 万内镜图像）
-% %     - EndoDINO（DINOv2 配方，GI 内镜，10M curated images）
-% %     - SurgeNetXL（DINO 系列，4.7M surgical frames）
-% %     - SurgFM / Surg-3M（ConvNeXt+DINO+蒸馏，Surg-3M = 4K 视频 / 938h / 3M+ 图像）
-% %     - EndoSSL（MSN，Lap-23M 腹腔镜帧）
-% %   视频级 SSL：
-% %     - Endo-FM（video transformer + space-time attention，时空匹配自监督，33K clips；后续 EndoFM-LV 适配更长视频）
-% %     - SurgVISTA（video-level MAE，3,650 手术视频 / 3.55M frames）
-% %     - SurgMotion（V-JEPA2 latent motion prediction，SurgMotion-15M 约 3,658h）
-% %   视觉-语言对齐：
-% %     - SurgVLP（手术教学视频 + ASR 文本，SVL 约 1,400 视频，zero-shot）
-% %     - HecVL（hierarchical video-language，fine-to-coarse 对比学习，zero-shot 相位识别）
-% %     - PeskaVLP（procedure-aware，LLM 层次化知识增强 + DTW 对比，zero-shot 迁移）
-% %     - OphCLIP（眼科手术，retrieval-augmented VLP，OphVL 375K pairs）
-% % 价值：领域内预训练，在下游 few-shot / 适配任务体现不错的临床价值
-% % 局限：与预训练领域强耦合，数据依赖强、领域偏置固化、跨术式泛化不佳、开源程度不佳
-% %   （benchmark 发现：surgical FM 高峰集中于预训练见过的术式，未见术式大幅下降）
-% Surgical FMs have likewise emerged, pre-training on diverse surgical datasets with
-% recipes similar to those of generic FMs.
-% SSL models include the image-level EndoViT~\cite{batic2024endovit}, EndoDINO~\cite{dermyer2025endodino},
-% SurgeNetXL~\cite{de2025scaling}, SurgFM~\cite{che2025surg}, and EndoSSL~\cite{hirsch2023self},
-% which apply masked autoencoding or self-distillation to endoscopic images and
-% frames, and the video-level Endo-FM~\cite{wang2023foundation} and its extension
-% EndoFM-LV~\cite{wang2025improving}, SurgVISTA~\cite{yang2026large}, and
-% SurgMotion~\cite{wu2026surgmotion}, which pre-train on surgical video clips.
-% Vision-language models align surgical videos with text, including SurgVLP~\cite{yuan2025learning},
-% HecVL~\cite{yuan2024hecvl}, and PeskaVLP~\cite{yuan2024procedure} on about 1,400
-% lecture videos, and OphCLIP~\cite{hu2024ophclip} on ophthalmic image-text pairs,
-% demonstrating clinical value in zero-shot and few-shot deployment.
-% However, their performance is sensitive to the procedures covered during
-% pre-training, and medical data privacy keeps many of these models from being
-% publicly released, limiting further research from fully leveraging their
-% pretraining potential.
-
-
 \subsection{Generic and Surgical Foundation Models}
-Beyond task-specific designs, FMs pre-trained on massive datasets acquire universal visual priors with strong transferability. Generic FMs span self-supervised learning (SSL) and contrastive learning paradigms across images and videos. In the image domain, DINOv3~\cite{simeoni2025dinov3} leverages self-distillation on 1.7 billion curated images to extract dense visual representations, while CLIP~\cite{radford2021learning} aligns 400 million image-text pairs via contrastive learning. Video counterparts like VideoMAE2~\cite{wang2023videomae}, V-JEPA2~\cite{assran2025v}, and InternVideo2~\cite{wang2024internvideo2} extend these concepts to temporal dynamics through masked video modeling and spatiotemporal alignment, exhibiting robust few-shot generalization. Parallelly, surgical FMs adapt these pre-training strategies to medical domains. Image-level SSL models such as EndoViT~\cite{batic2024endovit}, EndoDINO~\cite{dermyer2025endodino}, SurgeNetXL~\cite{de2025scaling}, SurgFM~\cite{che2025surg}, and EndoSSL~\cite{hirsch2023self} apply masked modeling or self-distillation to endoscopic frames, while video-level SSL models like Endo-FM~\cite{wang2023foundation}, EndoFM-LV~\cite{wang2025improving}, SurgVISTA~\cite{yang2026large}, and SurgMotion~\cite{wu2026surgmotion} pre-train on video clips. Additionally, surgical vision-language models such as SurgVLP~\cite{yuan2025learning}, HecVL~\cite{yuan2024hecvl}, PeskaVLP~\cite{yuan2024procedure}, and OphCLIP~\cite{hu2024ophclip} align clinical video with textual domain knowledge. Despite their potential, surgical FMs remain sensitive to procedure distributions in pre-training data, while privacy restrictions often hinder open releases, restricting broader research usage.
+Beyond task-specific designs, FMs pre-trained on massive datasets acquire universal visual priors with strong transferability. Generic FMs span self-supervised learning (SSL) and contrastive learning paradigms across images and videos. In the image domain, DINOv3~\cite{simeoni2025dinov3} leverages self-distillation on 1.7 billion curated images to extract dense visual representations, while CLIP~\cite{radford2021learning} aligns 400 million image-text pairs via contrastive learning. Video counterparts like VideoMAE2~\cite{wang2023videomae}, V-JEPA2~\cite{assran2025v}, and InternVideo2~\cite{wang2024internvideo2} extend these concepts to temporal dynamics through masked video modeling and spatiotemporal alignment, exhibiting robust few-shot generalization. Parallelly, surgical FMs adapt these pre-training strategies to medical domains. Image-level SSL models such as EndoViT~\cite{batic2024endovit}, EndoDINO~\cite{dermyer2025endodino}, SurgeNetXL~\cite{de2025scaling}, SurgFM~\cite{che2025surg}, and EndoSSL~\cite{hirsch2023self} apply masked modeling or self-distillation to endoscopic frames, while video-level SSL models like Endo-FM~\cite{wang2023foundation}, EndoFM-LV~\cite{wang2025improving}, SurgVISTA~\cite{yang2026large}, and SurgMotion~\cite{wu2026surgmotion} pre-train on video clips. Additionally, surgical vision-language models such as SurgVLP~\cite{yuan2025learning}, HecVL~\cite{yuan2024hecvl}, PeskaVLP~\cite{yuan2024procedure}, and OphCLIP~\cite{hu2024ophclip} align clinical video with textual domain knowledge. Despite their potential, surgical FMs remain sensitive to procedure distributions in pre-training data, while privacy restrictions often hinder open releases, restricting broader research usage. Yet whether generic FMs can substitute for surgical FMs in few-shot SPR remains under-explored, and even the strongest generic FM inherits the heavy architectures that preclude real-time deployment; we address both gaps in this work.
+
+
+\subsection{Few-Shot Adaptation and Token Reduction}
+Few-shot learning targets recognition from a handful of labeled examples and has been extensively studied for video action recognition~\cite{wanyan2024comprehensive}. In medical imaging, where expert annotation is particularly costly, recent studies show that general visual priors transfer surprisingly well under minimal supervision: multimodal large language models with in-context learning match specialist networks on cancer pathology classification from a few examples~\cite{ferber2024incontext}, and large-scale evaluations of parameter-efficient fine-tuning (PEFT) report the largest gains precisely in the low-data regimes typical of clinical imaging~\cite{dutt2024missed}. Among PEFT methods, low-rank adaptation (LoRA)~\cite{hu2022lora} is the most widely adopted, injecting small trainable rank-limited matrices while keeping the pretrained backbone frozen, thereby preserving general semantics and resisting overfitting on small datasets. Two further lines of work are closely related to ours. Token reduction keeps the most task-relevant tokens to accelerate ViTs~\cite{bergner2025tokencropr}; rather than discarding tokens for efficiency, our SSTS reweights them under a saliency budget so that the spatial redundancy of surgical frames becomes an inductive bias for few-shot adaptation. Likewise, dynamic video prompting highlights frames with high temporal variance as keyframes~\cite{liu2025stop}; our KPTF transfers this idea from prompt insertion to temporal pooling. Crucially, the selected tokens and keyframe weights are not by-products but become dense supervision signals in our distillation stage.
 
 
 \subsection{Knowledge Distillation for Lightweight Models}
